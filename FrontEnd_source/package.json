@@ -1,0 +1,26 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "build:android": "vite build && node scripts/copy-android-assets.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "lodash": "^4.18.1",
+    "vue": "^2.7.16",
+    "vuetify": "^2.7.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue2": "^2.3.4",
+    "vite": "^5.4.21",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}
