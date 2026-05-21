@@ -106,6 +106,8 @@ data class CveAlert(
     val matched: String,
     val severity: String,
     val score: String,
+    val published: String,
+    val lastModified: String,
     val title: String,
     val description: String,
     val url: String

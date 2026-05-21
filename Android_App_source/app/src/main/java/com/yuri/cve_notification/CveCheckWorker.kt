@@ -171,6 +171,8 @@ class CveCheckWorker(
                     matched = item.optString("matched"),
                     severity = item.optString("severity"),
                     score = item.optString("score"),
+                    published = item.optString("published"),
+                    lastModified = item.optString("last_modified"),
                     title = item.optString("title", item.optString("cve_id")),
                     description = item.optString("description"),
                     url = item.optString("url")
@@ -186,18 +188,18 @@ class CveCheckWorker(
 
         val urgentChannel = NotificationChannel(
             urgentChannelId,
-            "CVE URGENT",
+            "緊急CVE通知",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Critical CVE"
+            description = "CRITICALまたは最優先で確認が必要なCVEを通知します"
         }
 
         val watchChannel = NotificationChannel(
             watchChannelId,
-            "CVE WATCH",
+            "重要CVE通知",
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "High CVE"
+            description = "HIGH相当など確認が必要なCVEと取得状況を通知します"
         }
 
         val manager = applicationContext.getSystemService(NotificationManager::class.java)

@@ -5,7 +5,11 @@
         {{ alert.title || alert.cve_id }}
       </div>
 
-      <v-chip v-if="alert.ignored" small color="grey lighten-1" text-color="white"> 通知非通知 </v-chip>
+      <div class="status-chips">
+        <v-chip v-if="alert.is_new" small color="green darken-2" text-color="white">New!</v-chip>
+        <v-chip v-if="alert.is_updated" small color="blue darken-2" text-color="white">Update!</v-chip>
+        <v-chip v-if="alert.ignored" small color="grey lighten-1" text-color="white"> 通知非通知 </v-chip>
+      </div>
     </div>
 
     <div class="detail-grid">
@@ -146,6 +150,16 @@ export default {
   font-weight: 600;
   word-break: break-word;
   color: var(--app-text-main);
+  min-width: 0;
+}
+
+.status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .detail-grid {

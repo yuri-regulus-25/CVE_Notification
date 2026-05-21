@@ -6,7 +6,7 @@ const sourceDir = path.join(projectRoot, "dist");
 const destinationDir = path.resolve(
   projectRoot,
   "..",
-  "CVE_Notification",
+  "Android_App_source",
   "app",
   "src",
   "main",

@@ -23,13 +23,21 @@
           :filter-status="filterStatus"
           :filter-source="filterSource"
           :filter-severity="filterSeverity"
+          :filter-products="filterProducts"
+          :filter-freshness="filterFreshness"
           :keyword="keyword"
           :status-filters="statusFilters"
           :source-filters="sourceFilters"
           :severity-filters="severityFilters"
+          :product-filters="productFilters"
+          :freshness-filters="freshnessFilters"
           @change-filter-status="filterStatus = $event"
           @change-filter-source="filterSource = $event"
           @change-filter-severity="filterSeverity = $event"
+          @change-filter-products="filterProducts = $event"
+          @change-filter-freshness="filterFreshness = $event"
+          @select-all-products="selectAllProducts"
+          @clear-products="filterProducts = []"
           @change-keyword="keyword = $event"
         />
 
@@ -92,6 +100,8 @@ export default {
       filterStatus: "all",
       filterSource: "ALL",
       filterSeverity: "ALL",
+      filterProducts: [],
+      filterFreshness: "all",
       keyword: "",
       statusFilters: [
         { label: "全て", value: "all" },
@@ -111,6 +121,11 @@ export default {
         { label: "注意", value: "LOW" },
         { label: "なし/情報なし", value: "UNKNOWN" }
       ],
+      freshnessFilters: [
+        { label: "全件", value: "all" },
+        { label: "新規登録された情報のみ", value: "new" },
+        { label: "最近更新された情報のみ", value: "updated" },
+      ],
       expandedDescriptions: {},
       showScrollTop: false,
       snackbar: {
@@ -126,11 +141,14 @@ export default {
     filteredAlerts() {
       const keyword = (this.keyword || "").toLowerCase();
 
-      return (this.state.alerts || []).filter((alert) => {
+      const alerts = (this.state.alerts || []).filter((alert) => {
         if (this.filterStatus === "active" && alert.ignored) return false;
         if (this.filterStatus === "ignored" && !alert.ignored) return false;
         if (this.filterSource !== "ALL" && alert.source !== this.filterSource) return false;
         if (this.filterSeverity !== "ALL" && alert.severity !== this.filterSeverity) return false;
+        if (this.filterProducts.length > 0 && !this.filterProducts.includes(alert.matched)) return false;
+        if (this.filterFreshness === "new" && !alert.is_new) return false;
+        if (this.filterFreshness === "updated" && !alert.is_updated) return false;
 
         if (!keyword) return true;
 
@@ -140,7 +158,6 @@ export default {
           alert.cve_id,
           alert.source,
           alert.category,
-          alert.matched,
           alert.severity,
           alert.priority,
           alert.description,
@@ -150,6 +167,24 @@ export default {
 
         return haystack.includes(keyword);
       });
+
+      return alerts.sort((a, b) => this.alertTimestamp(b) - this.alertTimestamp(a));
+    },
+    productFilters() {
+      const products = new Set();
+
+      (this.state.alerts || []).forEach((alert) => {
+        if (alert.matched) {
+          products.add(alert.matched);
+        }
+      });
+
+      return Array.from(products)
+        .sort((a, b) => a.localeCompare(b))
+        .map((value) => ({
+          label: value,
+          value,
+        }));
     },
     // 状態情報(JSON取り込み情報)
     // 非通知件数
@@ -304,6 +339,15 @@ export default {
         top: 0,
         behavior: "smooth",
       });
+    },
+    selectAllProducts() {
+      this.filterProducts = this.productFilters.map((item) => item.value);
+    },
+    alertTimestamp(alert) {
+      const dateText = alert.last_modified || alert.published || "";
+      const timestamp = Date.parse(dateText);
+
+      return Number.isNaN(timestamp) ? 0 : timestamp;
     },
     showToast(text, color = "success") {
       this.snackbar.icon = color == "success" ? "mdi-check-circle-outline" : "mdi-alert-circle-outline";

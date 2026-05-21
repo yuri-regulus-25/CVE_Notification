@@ -114,15 +114,19 @@ object NotificationHelper {
 
         val urgentChannel = NotificationChannel(
             urgentChannelId,
-            "CVE URGENT",
+            "緊急CVE通知",
             NotificationManager.IMPORTANCE_HIGH
-        )
+        ).apply {
+            description = "CRITICALまたは最優先で確認が必要なCVEを通知します"
+        }
 
         val watchChannel = NotificationChannel(
             watchChannelId,
-            "CVE WATCH",
+            "重要CVE通知",
             NotificationManager.IMPORTANCE_DEFAULT
-        )
+        ).apply {
+            description = "HIGH相当など確認が必要なCVEと取得状況を通知します"
+        }
 
         val manager = context.getSystemService(NotificationManager::class.java)
 

@@ -9,6 +9,10 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.Locale
 import java.util.TimeZone
 
@@ -198,6 +202,9 @@ class AndroidBridge(
 
         val alerts = parseAlerts(root)
         val displayAlerts = JSONArray()
+        val referenceMillis =
+            if (lastCheckedAt > 0L) lastCheckedAt else System.currentTimeMillis()
+
         alerts.forEach { alert ->
             displayAlerts.put(
                 JSONObject()
@@ -209,6 +216,10 @@ class AndroidBridge(
                     .put("matched", alert.matched)
                     .put("severity", alert.severity)
                     .put("score", alert.score)
+                    .put("published", alert.published)
+                    .put("last_modified", alert.lastModified)
+                    .put("is_new", isWithinOneDay(alert.published, referenceMillis))
+                    .put("is_updated", isWithinOneDay(alert.lastModified, referenceMillis))
                     .put("title", alert.title)
                     .put("description", alert.description)
                     .put("url", alert.url)
@@ -252,6 +263,8 @@ class AndroidBridge(
                     matched = item.optString("matched", ""),
                     severity = item.optString("severity", "UNKNOWN"),
                     score = item.optString("score", ""),
+                    published = item.optString("published", ""),
+                    lastModified = item.optString("last_modified", ""),
                     title = item.optString("title", item.optString("cve_id", "UNKNOWN")),
                     description = item.optString("description", ""),
                     url = item.optString("url", "")
@@ -323,6 +336,29 @@ class AndroidBridge(
             diffMillis > staleThresholdMillis
         } catch (e: Exception) {
             true
+        }
+    }
+
+    private fun isWithinOneDay(dateText: String, referenceMillis: Long): Boolean {
+        val targetMillis = parseAlertMillis(dateText) ?: return false
+        val diffMillis = referenceMillis - targetMillis
+
+        return diffMillis in 0..(24L * 60L * 60L * 1000L)
+    }
+
+    private fun parseAlertMillis(dateText: String): Long? {
+        if (dateText.isBlank()) return null
+
+        return try {
+            when {
+                dateText.endsWith("Z") -> Instant.parse(dateText).toEpochMilli()
+                dateText.contains("+") || dateText.matches(Regex(".*-\\d\\d:\\d\\d$")) ->
+                    OffsetDateTime.parse(dateText).toInstant().toEpochMilli()
+                else ->
+                    LocalDateTime.parse(dateText).toInstant(ZoneOffset.UTC).toEpochMilli()
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
