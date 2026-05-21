@@ -55,6 +55,13 @@
 
       <ScrollTopButton :visible="showScrollTop" @scroll-top="scrollToTop" />
 
+      <v-overlay :value="loading" opacity="0.46" z-index="1000">
+        <div class="loader-panel">
+          <v-progress-circular indeterminate size="64" width="5" color="white" />
+          <div class="loader-text">読み込み中...</div>
+        </div>
+      </v-overlay>
+
       <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="2500">
         <v-icon color="white">{{ snackbar.icon }}</v-icon>
         {{ snackbar.text }}
@@ -85,7 +92,7 @@ export default {
   },
   data() {
     return {
-      loading: false,
+      loading: true,
       state: {
         ok: true,
         status: "未取得",
@@ -232,8 +239,6 @@ export default {
   },
 
   mounted() {
-    this.loadAppState();
-
     // カラーテーマ設定
     if (window.matchMedia) {
       window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
@@ -247,6 +252,10 @@ export default {
     window.refreshFromAndroid = () => {
       this.fetchAlerts();
     };
+
+    this.runWithLoader(() => {
+      this.loadAppState();
+    });
   },
 
   beforeDestroy() {
@@ -292,9 +301,7 @@ export default {
     },
 
     fetchAlerts() {
-      this.loading = true;
-
-      this.$nextTick(() => {
+      this.runWithLoader(() => {
         try {
           this.applyState(this.callBridge("fetchAlerts"));
           this.showToast("脆弱性情報を更新しました");
@@ -302,8 +309,6 @@ export default {
           this.state.status = "取得エラー";
           this.showToast("エラーが発生しました", "error");
           this.state.last_error = String(e);
-        } finally {
-          this.loading = false;
         }
       });
     },
@@ -348,6 +353,23 @@ export default {
       const timestamp = Date.parse(dateText);
 
       return Number.isNaN(timestamp) ? 0 : timestamp;
+    },
+    runWithLoader(callback) {
+      this.loading = true;
+
+      this.$nextTick(() => {
+        const scheduleFrame = window.requestAnimationFrame || ((fn) => setTimeout(fn, 16));
+
+        scheduleFrame(() => {
+          setTimeout(() => {
+            try {
+              callback();
+            } finally {
+              this.loading = false;
+            }
+          }, 0);
+        });
+      });
     },
     showToast(text, color = "success") {
       this.snackbar.icon = color == "success" ? "mdi-check-circle-outline" : "mdi-alert-circle-outline";
@@ -424,6 +446,22 @@ body,
 .value-text {
   color: var(--app-text-main);
   word-break: break-word;
+}
+
+.loader-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  min-height: 120px;
+}
+
+.loader-text {
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
 }
 
 </style>
