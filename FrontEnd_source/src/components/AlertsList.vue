@@ -1,7 +1,5 @@
 <template>
   <div>
-    <div class="section-title">CVE情報</div>
-
     <v-alert v-if="!loading && alerts.length === 0" type="info" outlined dense>
       表示対象のCVEはありません
     </v-alert>
@@ -10,12 +8,11 @@
       v-for="alert in alerts"
       :key="alert.alert_id"
       :alert="alert"
-      :description-expanded="isDescriptionExpanded(alert.alert_id)"
-      @toggle-description="$emit('toggle-description', $event)"
-      @copy-description="$emit('copy-description', $event)"
-      @open-url="$emit('open-url', $event)"
-      @ignore-alert="$emit('ignore-alert', $event)"
-      @unignore-alert="$emit('unignore-alert', $event)"
+      @open-detail="$emit('open-detail', $event)"
+      @pin-alert="$emit('pin-alert', $event)"
+      @unpin-alert="$emit('unpin-alert', $event)"
+      @hide-alert="$emit('hide-alert', $event)"
+      @show-alert="$emit('show-alert', $event)"
     />
   </div>
 </template>
@@ -36,16 +33,6 @@ export default {
     loading: {
       type: Boolean,
       default: false,
-    },
-    expandedDescriptions: {
-      type: Object,
-      default: () => ({}),
-    },
-  },
-
-  methods: {
-    isDescriptionExpanded(alertId) {
-      return !!this.expandedDescriptions[alertId];
     },
   },
 };

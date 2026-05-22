@@ -1,89 +1,53 @@
 <template>
-  <v-card outlined class="pa-3 mb-3 app-card" :class="{ 'ignored-card': alert.ignored }">
-    <div class="d-flex align-start justify-space-between">
-      <div class="cve-title">
-        {{ alert.title || alert.cve_id }}
+  <v-card outlined class="pa-3 mb-3 app-card cve-card" :class="{ 'hidden-card': isHidden }">
+    <div class="card-header">
+      <div class="card-title-block">
+        <div class="cve-id">{{ alert.cve_id || alert.alert_id }}</div>
+        <div class="card-meta">
+          <v-chip x-small :color="severityColor(alert.severity)" :text-color="severityTextColor">
+            {{ severityText(alert.severity || "UNKNOWN") }}
+          </v-chip>
+          <v-chip x-small>
+            スコア: {{ displayScore(alert.score) }}
+          </v-chip>
+          <v-chip x-small>
+            領域: {{ alert.area_label || areaLabel(alert.area) }}
+          </v-chip>
+        </div>
       </div>
 
-      <div class="status-chips">
-        <v-chip v-if="alert.is_new" small color="green darken-2" text-color="white">New!</v-chip>
-        <v-chip v-if="alert.is_updated" small color="blue darken-2" text-color="white">Update!</v-chip>
-        <v-chip v-if="alert.ignored" small color="grey lighten-1" text-color="white"> 通知非通知 </v-chip>
+      <div class="status-icons">
+        <v-icon v-if="isPinned" color="red darken-1" title="pinned">mdi-pin-outline</v-icon>
+        <v-icon v-if="alert.is_new" color="blue darken-2" title="new">mdi-alpha-n-circle-outline</v-icon>
+        <v-icon v-else-if="alert.is_updated" color="green darken-2" title="updated">mdi-alpha-u-circle-outline</v-icon>
       </div>
     </div>
 
-    <div class="detail-grid">
-      <div class="label-text">ソース</div>
-      <div class="value-text">
-        <v-chip x-small :color="sourceColor(alert.source)" class="mr-1">
-          {{ alert.source || "UNKNOWN" }}
-        </v-chip>
-      </div>
+    <div class="matched-keyword">{{ alert.matched || "-" }}</div>
 
-      <div class="label-text">CVE番号</div>
-      <div class="value-text">{{ alert.cve_id }}</div>
-
-      <div class="label-text">カテゴリ</div>
-      <div class="value-text">{{ alert.category || "-" }}</div>
-
-      <div class="label-text">一致プロダクト名</div>
-      <div class="value-text">{{ alert.matched || "-" }}</div>
-
-      <div class="label-text">レベル</div>
-      <div class="value-text">
-        <v-chip x-small :color="severityColor(alert.severity)" :text-color="severityTextColor">
-          {{ severityText(alert.severity || "UNKNOWN") }}
-        </v-chip>
-      </div>
-
-      <div class="label-text">CVSS v3</div>
-      <div class="value-text">{{ displayScore(alert.score) }}</div>
+    <div class="date-grid">
+      <span class="label-text">公開日</span>
+      <span class="value-text">{{ formatDate(alert.published) }}</span>
+      <span class="label-text">最終更新</span>
+      <span class="value-text">{{ formatDate(alert.last_modified) }}</span>
     </div>
 
-    <div v-if="alert.description" class="description" :class="{ collapsed: !descriptionExpanded }">
-      {{ alert.description }}
+    <div class="description">
+      {{ alert.description || "-" }}
     </div>
-
-    <v-btn
-      v-if="alert.description"
-      text
-      small
-      color="primary"
-      class="mt-1 px-0"
-      @click="$emit('toggle-description', alert.alert_id)"
-    >
-      <v-icon color="primary" left class="mr-2 description-toggle-icon" :class="{ open: descriptionExpanded }">
-        mdi-chevron-down
-      </v-icon>
-      {{ descriptionExpanded ? "説明を閉じる" : "説明を表示" }}
-    </v-btn>
-
-    <v-spacer />
-
-    <v-btn
-      v-if="alert.description"
-      text
-      small
-      color="primary"
-      class="mt-1 px-0"
-      @click="$emit('copy-description', alert.description)"
-    >
-      <v-icon left>mdi-clipboard-multiple-outline</v-icon>
-      説明テキストコピー
-    </v-btn>
 
     <v-row dense class="card-actions">
-      <v-col cols="12" sm="6">
-        <v-btn block outlined @click="$emit('open-url', alert.url)">詳細表示</v-btn>
+      <v-col cols="12" sm="4">
+        <v-btn block outlined color="primary" @click="$emit('open-detail', alert)">詳細</v-btn>
       </v-col>
-
-      <v-col cols="12" sm="6">
-        <v-btn v-if="!alert.ignored" block outlined color="red darken-1" @click="$emit('ignore-alert', alert.alert_id)">
-          通知解除
+      <v-col cols="12" sm="4">
+        <v-btn block outlined color="red darken-1" @click="togglePin">
+          {{ isPinned ? "ピン留め解除" : "ピン留め" }}
         </v-btn>
-
-        <v-btn v-else block outlined color="primary" @click="$emit('unignore-alert', alert.alert_id)">
-          非通知設定解除
+      </v-col>
+      <v-col cols="12" sm="4">
+        <v-btn block outlined @click="toggleHidden">
+          {{ isHidden ? "表示" : "非表示" }}
         </v-btn>
       </v-col>
     </v-row>
@@ -97,19 +61,27 @@ export default {
       type: Object,
       required: true,
     },
-    descriptionExpanded: {
-      type: Boolean,
-      default: false,
-    },
   },
 
   computed: {
+    isPinned() {
+      return this.alert.display_state === "pinned";
+    },
+    isHidden() {
+      return this.alert.display_state === "hidden";
+    },
     severityTextColor() {
       return "white";
     },
   },
 
   methods: {
+    togglePin() {
+      this.$emit(this.isPinned ? "unpin-alert" : "pin-alert", this.alert);
+    },
+    toggleHidden() {
+      this.$emit(this.isHidden ? "show-alert" : "hide-alert", this.alert);
+    },
     displayScore(score) {
       if (score === "null" || typeof score === "undefined" || String(score).trim() === "") {
         return "評価情報無し";
@@ -117,21 +89,30 @@ export default {
 
       return score;
     },
+    formatDate(dateText) {
+      const timestamp = Date.parse(dateText || "");
+      if (Number.isNaN(timestamp)) return "-";
 
-    sourceColor(source) {
-      if (source === "JVN") return "pink darken-3";
-      if (source === "NVD") return "purple darken-2";
-      return "blue lighten-4";
+      const date = new Date(timestamp);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
     },
-
+    areaLabel(area) {
+      if (area === "infra") return "インフラ";
+      if (area === "dev") return "開発";
+      if (area === "common") return "共通";
+      if (area === "out_of_scope") return "領域外";
+      return "未分類";
+    },
     severityText(severity) {
       if (severity === "CRITICAL") return "緊急 / CRITICAL";
       if (severity === "HIGH") return "重要 / HIGH";
       if (severity === "MEDIUM") return "警告 / MEDIUM";
       if (severity === "LOW") return "注意 / LOW";
-      return "なし,情報なし / UNKNOWN";
+      return "無し, 情報無し / UNKNOWN";
     },
-
     severityColor(severity) {
       if (severity === "CRITICAL") return "red";
       if (severity === "HIGH") return "orange darken-4";
@@ -144,54 +125,75 @@ export default {
 </script>
 
 <style scoped>
-.cve-title {
-  font-size: 18px;
-  line-height: 1.35;
-  font-weight: 600;
-  word-break: break-word;
-  color: var(--app-text-main);
+.cve-card {
+  transition: opacity 0.16s ease;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title-block {
   min-width: 0;
 }
 
-.status-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
-  margin-left: 8px;
-  flex-shrink: 0;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 130px 1fr;
-  gap: 8px;
-  font-size: 13px;
-  margin-top: 12px;
-}
-
-.description {
-  margin-top: 12px;
-  font-size: 13px;
-  line-height: 1.6;
+.cve-id {
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 700;
   color: var(--app-text-main);
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
-.description.collapsed {
+.card-meta,
+.status-icons {
+  display: flex;
+  align-items: center;
+}
+
+.card-meta {
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--app-text-sub);
+}
+
+.status-icons {
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.matched-keyword {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--app-text-main);
+  word-break: break-word;
+}
+
+.date-grid {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 6px 10px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.description {
   display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  margin-top: 12px;
   overflow: hidden;
-}
-
-.description-toggle-icon {
-  transition: transform 0.16s ease;
-}
-
-.description-toggle-icon.open {
-  transform: rotate(180deg);
+  color: var(--app-text-main);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .card-actions {
@@ -200,8 +202,8 @@ export default {
   padding-top: 12px;
 }
 
-.ignored-card {
-  background: var(--app-ignored-bg) !important;
+.hidden-card {
+  background: var(--app-hidden-bg) !important;
   opacity: 0.78;
 }
 </style>

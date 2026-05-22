@@ -18,6 +18,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : ComponentActivity() {
 
+    private var androidBridge: AndroidBridge? = null
+
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
@@ -46,7 +48,9 @@ class MainActivity : ComponentActivity() {
 
         webView.webViewClient = WebViewClient()
         webView.webChromeClient = WebChromeClient()
-        webView.addJavascriptInterface(AndroidBridge(this), "AndroidBridge")
+        val bridge = AndroidBridge(this, webView, swipeRefreshLayout)
+        androidBridge = bridge
+        webView.addJavascriptInterface(bridge, "AndroidBridge")
 
         swipeRefreshLayout.setOnRefreshListener {
             webView.evaluateJavascript(
@@ -59,6 +63,12 @@ class MainActivity : ComponentActivity() {
         webView.loadUrl("file:///android_asset/www/index.html")
 
         setContentView(swipeRefreshLayout)
+    }
+
+    override fun onDestroy() {
+        androidBridge?.close()
+        androidBridge = null
+        super.onDestroy()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
